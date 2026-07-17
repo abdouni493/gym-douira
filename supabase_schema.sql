@@ -1273,7 +1273,8 @@ create or replace function public.bootstrap_admin(
   p_email      text,
   p_password   text,
   p_first_name text default 'Admin',
-  p_last_name  text default 'User'
+  p_last_name  text default 'User',
+  p_username   text default null
 )
 returns json
 language plpgsql
@@ -1281,8 +1282,9 @@ security definer
 set search_path = public, auth, extensions
 as $$
 declare
-  v_role_id uuid;
-  v_user_id uuid;
+  v_role_id  uuid;
+  v_user_id  uuid;
+  v_username text := nullif(btrim(p_username), '');
 begin
   -- Serialise concurrent bootstrap attempts.
   lock table public.workers in exclusive mode;
@@ -1302,6 +1304,14 @@ begin
       using errcode = '22023';
   end if;
 
+  -- Fail early with a friendly message if the chosen username is taken
+  -- (the unique index would otherwise raise a raw 23505 later).
+  if v_username is not null
+     and exists (select 1 from public.workers where lower(username) = lower(v_username)) then
+    raise exception 'That username is already taken.'
+      using errcode = '23505';
+  end if;
+
   insert into public.roles (name, is_admin) values ('Admin', true)
     on conflict (name) do update set is_admin = true
     returning id into v_role_id;
@@ -1314,14 +1324,15 @@ begin
                                        p_first_name || ' ' || p_last_name);
 
   insert into public.workers (
-    first_name, last_name, email, role_id, user_id,
+    first_name, last_name, email, username, role_id, user_id,
     account_active, pay_enabled, status, start_date
   ) values (
-    p_first_name, p_last_name, lower(p_email), v_role_id, v_user_id,
+    p_first_name, p_last_name, lower(p_email), v_username, v_role_id, v_user_id,
     true, false, 'active', current_date
   )
   on conflict (user_id) do update
-    set role_id = excluded.role_id, account_active = true, status = 'active';
+    set role_id = excluded.role_id, username = excluded.username,
+        account_active = true, status = 'active';
 
   insert into public.store_settings (id, name) values ('store', 'GYM')
     on conflict (id) do nothing;
@@ -1330,11 +1341,14 @@ begin
 end;
 $$;
 
+-- The username-aware signature replaces the original four-argument one.
+drop function if exists public.bootstrap_admin(text,text,text,text);
+
 -- Only these two are exposed to signed-out users.
-revoke all on function public.bootstrap_admin(text,text,text,text) from public;
-revoke all on function public.create_auth_user(text,text,text)     from public, anon, authenticated;
-grant execute on function public.admin_exists()                     to anon, authenticated;
-grant execute on function public.bootstrap_admin(text,text,text,text) to anon;
+revoke all on function public.bootstrap_admin(text,text,text,text,text) from public;
+revoke all on function public.create_auth_user(text,text,text)          from public, anon, authenticated;
+grant execute on function public.admin_exists()                          to anon, authenticated;
+grant execute on function public.bootstrap_admin(text,text,text,text,text) to anon;
 
 
 -- =============================================================================

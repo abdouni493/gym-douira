@@ -26,6 +26,7 @@ interface Props {
 export const CreateAdminDialog: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -33,15 +34,15 @@ export const CreateAdminDialog: React.FC<Props> = ({ isOpen, onClose, onCreated 
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
-    setFirstName(''); setLastName(''); setEmail('');
+    setFirstName(''); setLastName(''); setUsername(''); setEmail('');
     setPassword(''); setConfirm(''); setShow(false);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim() || !password) {
-      toast({ title: 'Missing information', description: 'Email and password are required.', variant: 'destructive' });
+    if (!username.trim() || !email.trim() || !password) {
+      toast({ title: 'Missing information', description: 'Username, email and password are required.', variant: 'destructive' });
       return;
     }
     if (password.length < 8) {
@@ -60,6 +61,7 @@ export const CreateAdminDialog: React.FC<Props> = ({ isOpen, onClose, onCreated 
         p_password: password,
         p_first_name: firstName.trim() || 'Admin',
         p_last_name: lastName.trim() || 'User',
+        p_username: username.trim(),
       });
 
       if (error) throw error;
@@ -104,6 +106,14 @@ export const CreateAdminDialog: React.FC<Props> = ({ isOpen, onClose, onCreated 
               <Input id="admin-last" value={lastName} onChange={(e) => setLastName(e.target.value)}
                      placeholder="User" className="gym-input" />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="admin-username">Username *</Label>
+            <Input id="admin-username" required value={username}
+                   onChange={(e) => setUsername(e.target.value)}
+                   autoComplete="username"
+                   placeholder="admin" className="gym-input" />
           </div>
 
           <div className="space-y-2">
