@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { GlobalRfidListener } from '@/components/GlobalRfidListener';
+import { usePointerEventsGuard } from '@/hooks/usePointerEventsGuard';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,9 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user } = useAuth();
+  // Self-heals the "mouse blocked" bug: releases a pointer-events lock that a
+  // Radix overlay leaked onto <body> when a render error tore it down.
+  usePointerEventsGuard();
 
   if (!user) {
     return <>{children}</>;

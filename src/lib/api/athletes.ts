@@ -129,6 +129,16 @@ export async function createSport(name: string): Promise<Sport> {
   return data as Sport;
 }
 
+/**
+ * Delete a sport. The athletes.sport_id FK is ON DELETE SET NULL, so any
+ * athlete still pointing at this sport simply loses the reference — no rows
+ * are removed with it.
+ */
+export async function deleteSport(id: string): Promise<void> {
+  const { error } = await supabase.from('sports').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---------------------------------------------------------------------------
 // Subscription catalog
 // ---------------------------------------------------------------------------

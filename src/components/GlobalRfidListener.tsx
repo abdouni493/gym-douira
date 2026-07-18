@@ -22,6 +22,8 @@ import {
   Athlete, findAthleteByRfid, listAthleteSubscriptions, listSubscriptionTypes, recordSeance,
 } from '@/lib/api/athletes';
 import { useSerialPort } from '@/hooks/useSerialPort';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/lib/i18n';
 import { DoorOpen, ShieldCheck, ShieldX, ShieldAlert, X, User, Calendar, Wifi, Clock } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -44,6 +46,8 @@ type AccessResult = {
 // ── Component ──────────────────────────────────────────────────────────────────
 export const GlobalRfidListener: React.FC = () => {
   const { sendViaOpenPort } = useSerialPort();
+  const { language } = useAuth();
+  const { t } = useTranslation(language);
   const [result, setResult] = useState<AccessResult | null>(null);
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -99,8 +103,8 @@ export const GlobalRfidListener: React.FC = () => {
         showResult({
           type: 'unknown',
           uid,
-          message: 'Unknown Card',
-          subMessage: `UID ${uid} is not linked to any athlete.`,
+          message: t('rfid.unknownCard'),
+          subMessage: t('rfid.unknownDesc'),
         });
         processingRef.current = false;
         return;
@@ -115,8 +119,8 @@ export const GlobalRfidListener: React.FC = () => {
           type: 'denied',
           athlete,
           uid,
-          message: 'No Subscription',
-          subMessage: `${athlete.full_name} has no active subscription.`,
+          message: t('rfid.noSubscription'),
+          subMessage: `${athlete.full_name} ${t('rfid.noSubscriptionDesc')}`,
         });
         processingRef.current = false;
         return;
@@ -130,8 +134,8 @@ export const GlobalRfidListener: React.FC = () => {
           type: 'denied',
           athlete,
           uid,
-          message: 'Subscription Expired',
-          subMessage: `Expired on ${expiryDate.toLocaleDateString('fr-FR')}`,
+          message: t('rfid.expired'),
+          subMessage: `${t('rfid.expiredOn')} ${expiryDate.toLocaleDateString(language === 'ar' ? 'ar' : language === 'fr' ? 'fr-FR' : 'en-US')}`,
           daysLeft: 0,
         });
         processingRef.current = false;
@@ -171,8 +175,8 @@ export const GlobalRfidListener: React.FC = () => {
             type: 'denied',
             athlete,
             uid,
-            message: 'No Sessions Left',
-            subMessage: `${athlete.full_name} has used all ${latestSubWithSessions.sessions} sessions.`,
+            message: t('rfid.noSessions'),
+            subMessage: `${athlete.full_name} ${t('rfid.noSessionsDesc')}`,
             sessionsInfo: { remaining: 0, total: latestSubWithSessions.sessions, justUsed: false },
           });
           processingRef.current = false;
@@ -197,8 +201,8 @@ export const GlobalRfidListener: React.FC = () => {
             type: 'warning',
             athlete,
             uid,
-            message: 'Already Used Today',
-            subMessage: `Session already deducted today. Available again tomorrow.`,
+            message: t('rfid.alreadyToday'),
+            subMessage: t('rfid.alreadyTodayDesc'),
             sessionsInfo: { remaining, total: latestSubWithSessions.sessions, justUsed: false },
           });
           
@@ -246,8 +250,8 @@ export const GlobalRfidListener: React.FC = () => {
             type: 'warning',
             athlete,
             uid,
-            message: 'Last Session!',
-            subMessage: `This was the last session. Renewal needed.`,
+            message: t('rfid.lastSession'),
+            subMessage: t('rfid.lastSessionDesc'),
             sessionsInfo,
           });
           processingRef.current = false;
@@ -266,8 +270,8 @@ export const GlobalRfidListener: React.FC = () => {
           type: 'granted',
           athlete,
           uid,
-          message: 'Access Granted',
-          subMessage: `${newRemaining}/${latestSubWithSessions.sessions} sessions remaining`,
+          message: t('rfid.accessGranted'),
+          subMessage: `${newRemaining}/${latestSubWithSessions.sessions} ${t('rfid.sessionsRemaining')}`,
           sessionsInfo,
         });
         processingRef.current = false;
@@ -287,8 +291,8 @@ export const GlobalRfidListener: React.FC = () => {
           type: 'warning',
           athlete,
           uid,
-          message: 'Access Granted',
-          subMessage: `Expiring soon — ${daysLeft} day(s) remaining`,
+          message: t('rfid.accessGranted'),
+          subMessage: `${t('rfid.expiringSoon')} — ${daysLeft} ${t('rfid.dayLeft')}`,
           daysLeft,
           sessionsInfo,
         });
@@ -297,10 +301,10 @@ export const GlobalRfidListener: React.FC = () => {
           type: 'granted',
           athlete,
           uid,
-          message: 'Access Granted',
+          message: t('rfid.accessGranted'),
           subMessage: sessionsInfo
-            ? `${sessionsInfo.remaining}/${sessionsInfo.total} sessions remaining`
-            : `${daysLeft} days remaining`,
+            ? `${sessionsInfo.remaining}/${sessionsInfo.total} ${t('rfid.sessionsRemaining')}`
+            : `${daysLeft} ${t('rfid.daysRemaining')}`,
           daysLeft: sessionsInfo ? undefined : daysLeft,
           sessionsInfo,
         });
@@ -310,13 +314,13 @@ export const GlobalRfidListener: React.FC = () => {
       showResult({
         type: 'unknown',
         uid,
-        message: 'Error',
-        subMessage: 'Failed to process card. Try again.',
+        message: t('rfid.error'),
+        subMessage: t('rfid.errorDesc'),
       });
     } finally {
       processingRef.current = false;
     }
-  }, [sendViaOpenPort, showResult]);
+  }, [sendViaOpenPort, showResult, t, language]);
 
   // ── Global keydown listener ──────────────────────────────────────────────
   useEffect(() => {
@@ -498,7 +502,7 @@ export const GlobalRfidListener: React.FC = () => {
           {(result?.type === 'granted' || result?.type === 'warning') && (
             <div className="flex items-center gap-2 mt-2 text-white/80">
               <DoorOpen className="w-4 h-4" />
-              <span className="text-sm font-medium">Door Opened</span>
+              <span className="text-sm font-medium">{t('rfid.doorOpened')}</span>
             </div>
           )}
         </div>
@@ -525,13 +529,13 @@ export const GlobalRfidListener: React.FC = () => {
                   {result.daysLeft !== undefined && (
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${c.badge}`}>
                       <Calendar className="w-3 h-3" />
-                      {result.daysLeft}d left
+                      {result.daysLeft}{t('rfid.daysLeftShort')}
                     </span>
                   )}
                   {result.sessionsInfo && (
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${c.badge}`}>
                       <Clock className="w-3 h-3" />
-                      {result.sessionsInfo.remaining}/{result.sessionsInfo.total} sessions
+                      {result.sessionsInfo.remaining}/{result.sessionsInfo.total} {t('rfid.sessions')}
                     </span>
                   )}
                 </div>
