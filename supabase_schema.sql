@@ -1364,7 +1364,7 @@ grant execute on function public.bootstrap_admin(text,text,text,text,text) to an
 do $$
 declare
   -- >>> CHANGE THESE LINES <<<
-  v_create_admin   boolean := true;            -- false = create it from the UI instead
+  v_create_admin   boolean := false;           -- false = create it from the UI instead
   v_admin_email    text := 'admin@gym.com';
   v_admin_password text := 'Admin@2026';
   -- <<< CHANGE THESE LINES >>>
