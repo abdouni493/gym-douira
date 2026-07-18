@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { LogIn, Mail, Lock, Eye, EyeOff, ShieldPlus } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
-import { supabase } from '@/lib/supabase';
 import { CreateAdminDialog } from '@/components/auth/CreateAdminDialog';
 
 export const Login: React.FC = () => {
@@ -17,34 +16,11 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
-  // null = not checked yet, so the button never flashes before we know.
-  const [adminExists, setAdminExists] = useState<boolean | null>(null);
   const { login, isLoading, language, storeSettings } = useAuth();
   const { t } = useTranslation(language);
   const gymName = storeSettings?.name || 'GYM';
   const logo = storeSettings?.logo_url;
   const navigate = useNavigate();
-
-  // Ask the database whether any admin exists. This is what makes the
-  // "Create admin account" button disappear permanently after first use.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const { data, error } = await supabase.rpc('admin_exists');
-      if (!active) return;
-      if (error) {
-        // Can't tell (e.g. RPC not deployed yet, or transient error) -> show
-        // the create button so first-run setup is never blocked. The
-        // bootstrap_admin RPC itself still refuses a second admin at the DB
-        // level, so showing this when unsure is safe.
-        console.error('admin_exists check failed:', error.message);
-        setAdminExists(false);
-        return;
-      }
-      setAdminExists(Boolean(data));
-    })();
-    return () => { active = false; };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,26 +137,24 @@ export const Login: React.FC = () => {
           </form>
 
           {/*
-            First-run only. adminExists === false means the database has no
-            admin yet; the moment one is created this block never renders again.
+            Always available. The bootstrap_admin RPC only creates the first
+            administrator — it refuses at the database level once one exists,
+            so exposing this entry point on every load is safe.
           */}
-          {adminExists === false && (
-            <div className="mt-6 pt-6 border-t border-gym-gold/20 space-y-3">
-              <p className="text-xs text-gym-gold/50 text-center leading-relaxed">
-                No administrator account exists yet. Create the first one to get started —
-                this option disappears once an admin exists.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-gym-gold/40 text-gym-gold hover:bg-gym-gold/10"
-                onClick={() => setShowCreateAdmin(true)}
-              >
-                <ShieldPlus className="w-4 h-4 mr-2" />
-                Create admin account
-              </Button>
-            </div>
-          )}
+          <div className="mt-6 pt-6 border-t border-gym-gold/20 space-y-3">
+            <p className="text-xs text-gym-gold/50 text-center leading-relaxed">
+              Setting up for the first time? Create the administrator account.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-gym-gold/40 text-gym-gold hover:bg-gym-gold/10"
+              onClick={() => setShowCreateAdmin(true)}
+            >
+              <ShieldPlus className="w-4 h-4 mr-2" />
+              Create admin account
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -188,8 +162,7 @@ export const Login: React.FC = () => {
         isOpen={showCreateAdmin}
         onClose={() => setShowCreateAdmin(false)}
         onCreated={(createdEmail) => {
-          // Hide the button immediately; the DB will also now refuse a second admin.
-          setAdminExists(true);
+          // Prefill the email so the new admin can sign in right away.
           setEmail(createdEmail);
         }}
       />
