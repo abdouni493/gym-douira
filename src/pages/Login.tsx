@@ -16,7 +16,6 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   // null = not checked yet, so the button never flashes before we know.
   const [adminExists, setAdminExists] = useState<boolean | null>(null);
@@ -34,10 +33,12 @@ export const Login: React.FC = () => {
       const { data, error } = await supabase.rpc('admin_exists');
       if (!active) return;
       if (error) {
-        // Can't tell -> assume one exists. Safer to hide the button than to
-        // offer a flow that will fail anyway.
+        // Can't tell (e.g. RPC not deployed yet, or transient error) -> show
+        // the create button so first-run setup is never blocked. The
+        // bootstrap_admin RPC itself still refuses a second admin at the DB
+        // level, so showing this when unsure is safe.
         console.error('admin_exists check failed:', error.message);
-        setAdminExists(true);
+        setAdminExists(false);
         return;
       }
       setAdminExists(Boolean(data));
@@ -83,64 +84,6 @@ export const Login: React.FC = () => {
       variant: "destructive",
     });
   };
-
-  const handleForgotPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: t('common.info'),
-      description: t('login.forgotPassword'),
-    });
-    setShowForgotPassword(false);
-  };
-
-  if (showForgotPassword) {
-    return (
-      <div className="min-h-screen bg-gym-black flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-gradient-to-br from-gym-black via-gym-gray to-gym-black"></div>
-        <Card className="w-full max-w-md gym-card relative z-10 animate-scale-in">
-          <CardHeader className="space-y-1 text-center">
-            <div className="mx-auto w-16 h-16 bg-gold-gradient rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-8 h-8 text-gym-black" />
-            </div>
-            <CardTitle className="text-2xl gradient-text">{t('login.forgotPassword')}</CardTitle>
-            <CardDescription className="text-gym-gold/60">
-              {t('login.enterCredentials')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">{t('common.email')}</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gym-gold/60 w-4 h-4" />
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    placeholder={t('common.email')}
-                    className="pl-10 gym-input"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Button type="submit" className="w-full gym-button">
-                  {t('login.signInButton')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => setShowForgotPassword(false)}
-                >
-                  {t('common.back')}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gym-black flex items-center justify-center p-4">
@@ -200,15 +143,6 @@ export const Login: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-sm text-gym-gold/60 hover:text-gym-gold transition-colors"
-              >
-                {t('login.forgotPassword')}
-              </button>
             </div>
             <Button
               type="submit"
