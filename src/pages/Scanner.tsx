@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Scan, User, CreditCard, Calendar, Phone, MapPin, Search, QrCode,
   Printer, Download, UserPlus, Clock, Mail, IdCard,
-  Wifi, DoorOpen, CheckCircle2, AlertTriangle, RefreshCw, WifiOff
+  Wifi, CheckCircle2, AlertTriangle, RefreshCw, WifiOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +23,7 @@ export const Scanner: React.FC = () => {
   const { toast } = useToast();
   const { language } = useAuth();
   const { t } = useTranslation(language);
-  const { startContinuous, stopContinuous, sendViaOpenPort, isScanning, error: serialError } = useSerialPort();
+  const { startContinuous, stopContinuous, isScanning, error: serialError } = useSerialPort();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [scannedId, setScannedId] = useState('');
   const [selectedAthlete, setSelectedAthlete] = useState<Athlete | null>(null);
@@ -35,7 +35,7 @@ export const Scanner: React.FC = () => {
   const [activeTab, setActiveTab] = useState('scanner');
   const [scanMode, setScanMode] = useState<'manual' | 'rfid'>('rfid');
   const [rfidLastUid, setRfidLastUid] = useState('');
-  const [doorLoading, setDoorLoading] = useState(false);
+  // Door control removed: keep scanning only
   const scannerInputRef = useRef<HTMLInputElement>(null);
   const hiddenFileRef = useRef<HTMLInputElement | null>(null);
 
@@ -138,13 +138,8 @@ export const Scanner: React.FC = () => {
         });
         
         // Still open the door
-        try {
-          await sendViaOpenPort('1');
-          console.log('🚪 Courtesy door opened (session already used today) for', found.first_name);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.warn('Door error (courtesy):', msg);
-        }
+        // Courtesy door-opening removed; keep only scanning and messaging.
+        console.log('Courtesy access: door-opening disabled in this build for', found.first_name);
         return;
       }
 
@@ -162,47 +157,36 @@ export const Scanner: React.FC = () => {
         console.error('Failed to record session use:', err);
       }
 
-      try {
-        await sendViaOpenPort('1');
-        console.log('✅ Door signal sent successfully for', found.first_name);
-        if (newRemaining === 0) {
-          toast({
-            title: '⚠️ Door opened — Last session!',
-            description: `${found.full_name} - Renewal needed.`,
-          });
-        } else {
-          toast({
-            title: '✅ Door opened',
-            description: `Welcome ${found.full_name} — ${newRemaining}/${latestSubWithSessions.sessions} sessions remaining.`,
-          });
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        toast({ title: 'Door error', description: msg, variant: 'destructive' });
+      // Door-opening removed: only notify via UI/toast
+      if (newRemaining === 0) {
+        toast({
+          title: '⚠️ Last session',
+          description: `${found.full_name} - Renewal needed.`,
+        });
+      } else {
+        toast({
+          title: '✅ Access recorded',
+          description: `Welcome ${found.full_name} — ${newRemaining}/${latestSubWithSessions.sessions} sessions remaining.`,
+        });
       }
       return;
     }
 
     // ── Active or expiring soon → OPEN THE DOOR ────────────────────────
-    try {
-      await sendViaOpenPort('1');
-      console.log('✅ Door signal sent successfully for', found.first_name);
-      if (daysLeft <= 7) {
-        toast({
-          title: `⚠️ Door opened — Expiring soon!`,
-          description: `${found.full_name} — ${daysLeft} day(s) remaining.`,
-        });
-      } else {
-        toast({
-          title: '✅ Door opened',
-          description: `Welcome ${found.full_name} — ${daysLeft} days remaining.`,
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast({ title: 'Door error', description: msg, variant: 'destructive' });
+    // Door-opening removed: only notify via toast
+    console.log('Access granted (door-opening disabled) for', found.first_name);
+    if (daysLeft <= 7) {
+      toast({
+        title: `⚠️ Expiring soon!`,
+        description: `${found.full_name} — ${daysLeft} day(s) remaining.`,
+      });
+    } else {
+      toast({
+        title: '✅ Access granted',
+        description: `Welcome ${found.full_name} — ${daysLeft} days remaining.`,
+      });
     }
-  }, [toast, sendViaOpenPort]);
+  }, [toast]);
 
   useEffect(() => {
     if (activeTab !== 'scanner') return;
@@ -221,19 +205,7 @@ export const Scanner: React.FC = () => {
     if (activeTab !== 'scanner') stopContinuous();
   }, [activeTab]); // eslint-disable-line
 
-  // ── Open door ─────────────────────────────────────────────────────────────
-  const handleOpenDoor = async () => {
-    setDoorLoading(true);
-    try {
-      await sendViaOpenPort('1');
-      toast({ title: '🔓 Door opened', description: 'Signal sent to door controller.' });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast({ title: 'Door error — check COM4 connection', description: msg, variant: 'destructive' });
-    } finally {
-      setDoorLoading(false);
-    }
-  };
+  // Door control removed: scanning only
 
   const handleScan = () => {
     if (!scannedId.trim()) {
@@ -703,18 +675,7 @@ export const Scanner: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Always-visible Open Door button */}
-          <div className="flex justify-end">
-            <Button
-              id="open-door-btn"
-              onClick={handleOpenDoor}
-              disabled={doorLoading}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-emerald-900/30 transition-all"
-            >
-              <DoorOpen className="w-5 h-5" />
-              {doorLoading ? 'Opening…' : 'Open door'}
-            </Button>
-          </div>
+          {/* Door control removed: scanning only */}
 
           {/* Onglet Scanner de Cartes */}
           <TabsContent value="scanner" className="space-y-6">

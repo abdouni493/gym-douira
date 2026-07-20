@@ -24,7 +24,7 @@ import {
 import { useSerialPort } from '@/hooks/useSerialPort';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/lib/i18n';
-import { DoorOpen, ShieldCheck, ShieldX, ShieldAlert, X, User, Calendar, Wifi, Clock } from 'lucide-react';
+import { ShieldCheck, ShieldX, ShieldAlert, X, User, Calendar, Wifi, Clock } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type SessionsInfo = {
@@ -45,7 +45,9 @@ type AccessResult = {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export const GlobalRfidListener: React.FC = () => {
-  const { sendViaOpenPort } = useSerialPort();
+  // Door control removed: keep only scanning
+  // (do not destructure sendViaOpenPort)
+  useSerialPort();
   const { language } = useAuth();
   const { t } = useTranslation(language);
   const [result, setResult] = useState<AccessResult | null>(null);
@@ -206,12 +208,8 @@ export const GlobalRfidListener: React.FC = () => {
             sessionsInfo: { remaining, total: latestSubWithSessions.sessions, justUsed: false },
           });
           
-          // Still open the door (courtesy access)
-          sendViaOpenPort('1').then(() => {
-            console.log('🚪 Courtesy door opened (session already used today) for', athlete.first_name);
-          }).catch((err) => {
-            console.warn('⚠️ Door signal failed (courtesy):', err);
-          });
+          // Courtesy access no longer opens the door in this build
+          console.log('Courtesy access (door-opening disabled) for', athlete.first_name);
           
           processingRef.current = false;
           return;
@@ -239,12 +237,8 @@ export const GlobalRfidListener: React.FC = () => {
 
         // If this was the last session, still open door but warn
         if (newRemaining === 0) {
-          // Open the door one last time (fire-and-forget for speed)
-          sendViaOpenPort('1').then(() => {
-            console.log('✅ Door signal sent (last session) for', athlete.first_name);
-          }).catch((err) => { 
-            console.warn('⚠️ Door signal failed (last session):', err); 
-          });
+          // Door-opening removed: log only
+          console.log('Last session reached (door-opening disabled) for', athlete.first_name);
 
           showResult({
             type: 'warning',
@@ -259,12 +253,8 @@ export const GlobalRfidListener: React.FC = () => {
         }
 
         // ── Session still available → OPEN THE DOOR ────────────────────
-        // Fire-and-forget for speed
-        sendViaOpenPort('1').then(() => {
-          console.log('✅ Door signal sent (session-based) for', athlete.first_name);
-        }).catch((err) => {
-          console.warn('⚠️ Door signal failed (session-based):', err);
-        });
+        // Door-opening removed: log only
+        console.log('Session-based access recorded (door-opening disabled) for', athlete.first_name);
 
         showResult({
           type: 'granted',
@@ -279,12 +269,8 @@ export const GlobalRfidListener: React.FC = () => {
       }
 
       // ── Active → OPEN THE DOOR ───────────────────────────────────────
-      // Fire-and-forget for speed
-      sendViaOpenPort('1').then(() => {
-        console.log('✅ Door signal sent successfully for', athlete.first_name);
-      }).catch((err) => {
-        console.warn('⚠️ Door signal failed:', err);
-      });
+      // Door-opening removed: log only
+      console.log('Access granted (door-opening disabled) for', athlete.first_name);
 
       if (daysLeft <= 7 && !sessionsInfo) {
         showResult({
@@ -320,7 +306,7 @@ export const GlobalRfidListener: React.FC = () => {
     } finally {
       processingRef.current = false;
     }
-  }, [sendViaOpenPort, showResult, t, language]);
+  }, [showResult, t, language]);
 
   // ── Global keydown listener ──────────────────────────────────────────────
   useEffect(() => {
@@ -499,12 +485,7 @@ export const GlobalRfidListener: React.FC = () => {
             {result?.message}
           </h2>
 
-          {(result?.type === 'granted' || result?.type === 'warning') && (
-            <div className="flex items-center gap-2 mt-2 text-white/80">
-              <DoorOpen className="w-4 h-4" />
-              <span className="text-sm font-medium">{t('rfid.doorOpened')}</span>
-            </div>
-          )}
+          {/* Door-opening removed: show access granted/warning without door icon */}
         </div>
 
         {/* Athlete info */}
