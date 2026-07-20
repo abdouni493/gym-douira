@@ -111,7 +111,14 @@ export function useRfidManager(initialRfid?: string, originalRfid?: string): Use
     }
 
     try {
-      await setAthleteRfid(athleteId, rfidUid || null);
+      // Normalize/validate before sending to API
+      const normalized = (rfidUid || '').toString().replace(/[^0-9A-Fa-f]/g, '').trim().toUpperCase();
+      if (normalized.length === 0) {
+        // clearing the RFID is allowed
+        await setAthleteRfid(athleteId, null);
+      } else {
+        await setAthleteRfid(athleteId, normalized);
+      }
       setIsRfidChanged(false);
       setRfidState('success');
     } catch (err) {

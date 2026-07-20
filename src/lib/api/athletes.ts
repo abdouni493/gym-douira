@@ -326,20 +326,31 @@ export async function paySubscription(input: {
 // RFID
 // ---------------------------------------------------------------------------
 
+const normalizeRfid = (uid: string | null | undefined) => {
+  if (!uid) return '';
+  // Keep only hex characters and uppercase — protect against control chars/newlines
+  const cleaned = (uid || '').toString().replace(/[^0-9A-Fa-f]/g, '').trim().toUpperCase();
+  return cleaned;
+};
+
 export async function findAthleteByRfid(rfidUid: string): Promise<Athlete | null> {
+  const norm = normalizeRfid(rfidUid);
+  if (!norm) return null;
   const { data, error } = await supabase
     .from('athletes')
     .select(ATHLETE_SELECT)
-    .eq('rfid_uid', rfidUid.trim().toUpperCase())
+    .eq('rfid_uid', norm)
     .maybeSingle();
   if (error) throw error;
   return (data as unknown as Athlete) ?? null;
 }
 
 export async function setAthleteRfid(athleteId: string, rfidUid: string | null): Promise<void> {
+  const norm = normalizeRfid(rfidUid);
+  const value = norm === '' ? null : norm;
   const { error } = await supabase
     .from('athletes')
-    .update({ rfid_uid: rfidUid ? rfidUid.trim().toUpperCase() : null })
+    .update({ rfid_uid: value })
     .eq('id', athleteId);
   if (error) throw error;
 }
